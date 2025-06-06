@@ -1,0 +1,184 @@
+html {
+  font-family: sans-serif;
+}
+
+h1 {
+  text-align: center;
+}
+
+.post-list li {
+  border-bottom: 1px solid #eee;
+  padding: 20px 0;
+  margin: 0;
+  list-style: none;
+}
+
+.post-header {
+  display: flex;
+  justify-content: space-between;
+  text-align: center;
+}
+
+.post-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.post-area {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  max-width: 600px;
+  margin: 32px auto 0 auto;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  padding: 20px 28px;
+}
+
+.post-area input[type="text"] {
+  flex: 1;
+  padding: 12px 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 20px;
+  font-size: 1em;
+  outline: none;
+  background: #f5f6fa;
+  transition: border-color 0.2s;
+}
+
+.post-area input[type="text"]:focus {
+  border-color: #1877f2;
+  background: #fff;
+}
+
+.author-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.author-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.name {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.date {
+  font-size: 12px;
+  color: #888;
+}
+
+.edited-tag {
+  color: #888;
+  font-size: 0.85em;
+  margin-left: 6px;
+}
+
+
+.btn-delete {
+  background: red;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 20px;
+  margin-left: auto;
+  font-size: 1em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  box-shadow: 0 1px 4px rgba(24, 119, 242, 0.08);
+}
+
+.btn-edit {
+  background: #1877f2;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 20px;
+  margin-left: auto;
+  font-size: 1em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  box-shadow: 0 1px 4px rgba(24, 119, 242, 0.08);
+}
+
+.btn-post {
+  background: #1877f2;
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  padding: 10px 22px;
+  font-size: 1em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  box-shadow: 0 1px 4px rgba(24, 119, 242, 0.08);
+}
+
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  padding-top: 100px;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.editContent {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  padding: 20px 28px;
+}
+
+.editContent input[type="text"] {
+  flex: 1;
+  padding: 12px 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 20px;
+  font-size: 1em;
+  outline: none;
+  background: #f5f6fa;
+  transition: border-color 0.2s;
+}
+
+.editContent input[type="text"]:focus {
+  border-color: #1877f2;
+  background: #fff;
+}
+
+.modal-content {
+  background-color: white;
+  margin: auto;
+  padding: 20px;
+  border-radius: 8px;
+  width: 400px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  position: relative;
+}
+
+.close-btn {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  font-size: 20px;
+  cursor: pointer;
+}
