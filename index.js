@@ -170,7 +170,7 @@ passport.use(
     },
     async (accessToken, refreshToken, profile, cb) => {
       try {
-        const email = profile.email;
+        const username = profile.username;
         const googleId = profile.id;
         let result = await db.query(
           "SELECT * FROM users WHERE google_id = $1",
@@ -179,7 +179,7 @@ passport.use(
         if (result.rows.length === 0) {
           await db.query(
             "INSERT INTO users (username, password, google_id) VALUES ($1, $2, $3)",
-            [email, "google", googleId]
+            [username, "google", googleId]
           );
           result = await db.query("SELECT * FROM users WHERE google_id = $1", [
             googleId,
