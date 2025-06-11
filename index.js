@@ -8,7 +8,7 @@ import GoogleStrategy from "passport-google-oauth2";
 import session from "express-session";
 import env from "dotenv";
 
-env.config({ path: ".test.env" });
+env.config({ path: ".env" });
 
 const app = express();
 const port = process.env.PORT;
