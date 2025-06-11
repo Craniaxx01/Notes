@@ -8,7 +8,7 @@ import GoogleStrategy from "passport-google-oauth2";
 import session from "express-session";
 import env from "dotenv";
 
-env.config({ path: ".env" });
+env.config({ path: ".test.env" });
 
 const app = express();
 const port = process.env.PORT;
@@ -170,7 +170,7 @@ passport.use(
     },
     async (accessToken, refreshToken, profile, cb) => {
       try {
-        const username = profile.email;
+        const email = profile.email;
         const googleId = profile.id;
         let result = await db.query(
           "SELECT * FROM users WHERE google_id = $1",
@@ -179,7 +179,7 @@ passport.use(
         if (result.rows.length === 0) {
           await db.query(
             "INSERT INTO users (username, password, google_id) VALUES ($1, $2, $3)",
-            [username, "google", googleId]
+            [email, "google", googleId]
           );
           result = await db.query("SELECT * FROM users WHERE google_id = $1", [
             googleId,
@@ -208,48 +208,60 @@ passport.deserializeUser(async (username, cb) => {
   }
 });
 
-app.post("/post", ensureAuthenticated, async (req, res) => {
-  const content = req.body.post?.trim();
-  if (content) {
+app.post(
+  "/post",
+  ensureAuthenticated,
+  async (req, res) => {
+    const content = req.body.post?.trim();
+    if (content) {
+      try {
+        await db.query("INSERT INTO notes (username, content) VALUES($1, $2)", [
+          req.user.username,
+          content,
+        ]);
+      } catch (err) {
+        console.error("Error Posting Note:", err);
+      }
+    }
+    res.redirect("/index");
+  }
+);
+
+app.post(
+  "/edit/:id/",
+  ensureAuthenticated,
+  async (req, res) => {
+    const id = Number(req.params.id);
+    const updatedContent = req.body.content;
+
     try {
-      await db.query("INSERT INTO notes (username, content) VALUES($1, $2)", [
+      await db.query(
+        "UPDATE notes SET content = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND username = $3",
+        [updatedContent, id, req.user.username]
+      );
+    } catch (err) {
+      console.error("Error Updating Note:", err);
+    }
+    res.redirect("/index");
+  }
+);
+
+app.post(
+  "/delete/:id/",
+  ensureAuthenticated,
+  async (req, res) => {
+    const id = Number(req.params.id);
+    try {
+      await db.query("DELETE FROM notes WHERE id = $1 AND username = $2", [
+        id,
         req.user.username,
-        content,
       ]);
     } catch (err) {
-      console.error("Error Posting Note:", err);
+      console.error("Error Deleting Post", err);
     }
+    res.redirect("/index");
   }
-  res.redirect("/index");
-});
-
-app.post("/edit/:id/", ensureAuthenticated, async (req, res) => {
-  const id = Number(req.params.id);
-  const updatedContent = req.body.content;
-
-  try {
-    await db.query(
-      "UPDATE notes SET content = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND username = $3",
-      [updatedContent, id, req.user.username]
-    );
-  } catch (err) {
-    console.error("Error Updating Note:", err);
-  }
-  res.redirect("/index");
-});
-
-app.post("/delete/:id/", ensureAuthenticated, async (req, res) => {
-  const id = Number(req.params.id);
-  try {
-    await db.query("DELETE FROM notes WHERE id = $1 AND username = $2", [
-      id,
-      req.user.username,
-    ]);
-  } catch (err) {
-    console.error("Error Deleting Post", err);
-  }
-  res.redirect("/index");
-});
+);
 
 function ensureAuthenticated(req, res, next) {
   if (req.isAuthenticated && req.isAuthenticated()) {
