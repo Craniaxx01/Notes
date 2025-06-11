@@ -7,6 +7,8 @@ import { Strategy } from "passport-local";
 import GoogleStrategy from "passport-google-oauth2";
 import session from "express-session";
 import env from "dotenv";
+import multer from "multer";
+import path from "path";
 
 env.config({ path: ".env" });
 
@@ -14,20 +16,7 @@ const app = express();
 const port = process.env.PORT;
 const saltRounds = 10;
 
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: true,
-  })
-);
-
-app.use(bodyParser.urlencoded({ extended: true }));
-app.set("view engine", "ejs");
-app.use(express.static("public"));
-app.use(passport.initialize());
-app.use(passport.session());
-
+// Database setup
 const db = new pg.Client({
   user: process.env.PG_USER,
   host: process.env.PG_HOST,
@@ -37,23 +26,28 @@ const db = new pg.Client({
 });
 db.connect();
 
-app.get("/", (req, res) => {
-  res.render("login");
-});
+// Middleware setup
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: true,
+  })
+);
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.static("public"));
+app.use(passport.initialize());
+app.use(passport.session());
+app.set("view engine", "ejs");
 
-app.get("/login", (req, res) => {
-  res.render("login");
-});
+// Routes
+app.get("/", (req, res) => res.render("login"));
+app.get("/login", (req, res) => res.render("login"));
+app.get("/register", (req, res) => res.render("register"));
 
-app.get("/register", (req, res) => {
-  res.render("register");
-});
-
-app.get("/logout", (req, res) => {
-  req.logout(function (err) {
-    if (err) {
-      return next(err);
-    }
+app.get("/logout", (req, res, next) => {
+  req.logout((err) => {
+    if (err) return next(err);
     res.redirect("/");
   });
 });
@@ -94,9 +88,40 @@ app.post(
   })
 );
 
-app.post("/register", async (req, res) => {
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: "public/uploads/",
+  filename: function (req, file, cb) {
+    cb(null, 'avatar-' + Date.now() + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  limits: { fileSize: 1000000 }, // 1MB limit
+  fileFilter: function (req, file, cb) {
+    checkFileType(file, cb);
+  }
+});
+
+// Check file type
+function checkFileType(file, cb) {
+  const filetypes = /jpeg|jpg|png|gif/;
+  const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+  const mimetype = filetypes.test(file.mimetype);
+
+  if (mimetype && extname) {
+    return cb(null, true);
+  } else {
+    cb('Error: Images Only!');
+  }
+}
+
+// Update the register route to handle file upload
+app.post("/register", upload.single('avatar'), async (req, res) => {
   const username = req.body.username;
   const password = req.body.password;
+  const avatarPath = req.file ? `/uploads/${req.file.filename}` : '/assets/avatar.jpg';
 
   try {
     const checkResult = await db.query(
@@ -105,26 +130,31 @@ app.post("/register", async (req, res) => {
     );
 
     if (checkResult.rows.length > 0) {
-      req.redirect("/login");
+      res.redirect("/login");
     } else {
       bcrypt.hash(password, saltRounds, async (err, hash) => {
         if (err) {
           console.error("Error hashing password:", err);
+          res.redirect("/register");
         } else {
           const result = await db.query(
-            "INSERT INTO users (username, password) VALUES ($1, $2) RETURNING *",
-            [username, hash]
+            "INSERT INTO users (username, password, profile_picture) VALUES ($1, $2, $3) RETURNING *",
+            [username, hash, avatarPath]
           );
           const user = result.rows[0];
           req.login(user, (err) => {
-            console.log("success");
-            res.redirect("/login");
+            if (err) {
+              console.error("Login error:", err);
+              return res.redirect("/register");
+            }
+            res.redirect("/index");
           });
         }
       });
     }
   } catch (err) {
-    console.log(err);
+    console.error("Registration error:", err);
+    res.redirect("/register");
   }
 });
 
@@ -170,21 +200,21 @@ passport.use(
     },
     async (accessToken, refreshToken, profile, cb) => {
       try {
-        const email = profile.email;
-        const googleId = profile.id;
-        let result = await db.query(
-          "SELECT * FROM users WHERE google_id = $1",
-          [googleId]
-        );
+        const { email, id: googleId, picture } = profile;
+        const profilePicture = picture || profile.photos?.[0]?.value;
+
+        let result = await db.query("SELECT * FROM users WHERE google_id = $1", [
+          googleId,
+        ]);
+
         if (result.rows.length === 0) {
-          await db.query(
-            "INSERT INTO users (username, password, google_id) VALUES ($1, $2, $3)",
-            [email, "google", googleId]
+          const newUser = await db.query(
+            "INSERT INTO users (username, password, google_id, profile_picture) VALUES ($1, $2, $3, $4) RETURNING *",
+            [email, "google", googleId, profilePicture]
           );
-          result = await db.query("SELECT * FROM users WHERE google_id = $1", [
-            googleId,
-          ]);
+          result = { rows: [newUser.rows[0]] };
         }
+
         return cb(null, result.rows[0]);
       } catch (err) {
         return cb(err);

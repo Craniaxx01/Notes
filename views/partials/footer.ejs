@@ -1,24 +1,33 @@
 <script>
-  function openEditModal(id, content) {
-    const modal = document.getElementById('editModal');
-    const form = document.getElementById('editForm');
-    const input = document.getElementById('editContent');
+const modal = document.getElementById('editModal');
+const editForm = document.getElementById('editForm');
+const editContent = document.getElementById('editContent');
+const closeBtn = document.querySelector('.close-btn');
 
-    form.action = `/edit/${id}/`;
-    input.value = content;
-    modal.classList.add('active');
-  }
+function openEditModal(id, content) {
+  editForm.action = `/edit/${id}/`;
+  editContent.value = content;
+  modal.classList.add('active');
+}
 
-  document.querySelector('.close-btn').onclick = function () {
-    document.getElementById('editModal').classList.remove('active');
-  }
+function closeModal() {
+  modal.classList.remove('active');
+}
 
-  window.onclick = function (event) {
-    const modal = document.getElementById('editModal');
-    if (event.target == modal) {
-      modal.classList.remove('active');
+closeBtn.onclick = closeModal;
+window.onclick = (e) => {
+  if (e.target === modal) closeModal();
+};
+
+function previewImage(input) {
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      document.getElementById('avatar-preview').src = e.target.result;
     }
+    reader.readAsDataURL(input.files[0]);
   }
+}
 </script>
 </body>
 

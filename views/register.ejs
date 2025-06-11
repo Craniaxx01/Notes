@@ -2,7 +2,20 @@
 
 <div class="login-container">
   <h1>Register</h1>
-  <form action="/register" method="POST" class="login-form">
+  <form action="/register" method="POST" class="login-form" enctype="multipart/form-data">
+    <div class="avatar-upload">
+      <img id="avatar-preview" src="/assets/blank_avatar.png" alt="Avatar preview" class="avatar-preview"/>
+      <label for="avatar" class="avatar-label">
+        <input 
+          type="file" 
+          id="avatar" 
+          name="avatar" 
+          accept="image/*"
+          onchange="previewImage(this)"
+        />
+        <span>Choose Avatar</span>
+      </label>
+    </div>
     <input type="text" name="username" placeholder="Username" required />
     <input type="password" name="password" placeholder="Password" required />
     <button type="submit">Register</button>

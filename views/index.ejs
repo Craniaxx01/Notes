@@ -22,8 +22,12 @@
       <li>
         <div class="post-header">
           <div class="author-info">
-            <img src="/assets/avatar.jpg" alt="Avatar" class="avatar" />
-            <strong class="name"> <%= note.username %> </strong>
+            <img 
+              src="<%= note.username === user.username ? (user.profile_picture || '/assets/blank_avatar.png') : '/assets/blank_avatar.png' %>" 
+              alt="Avatar" 
+              class="avatar" 
+            />
+            <strong class="name"><%= note.username %></strong>
             <div class="date">
               <span>
                 Created: <%= new Date(note.created_at).toLocaleString("en-US", {
