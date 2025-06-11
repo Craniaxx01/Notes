@@ -165,12 +165,12 @@ passport.use(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: "http://localhost:3000/auth/google/index",
+      callbackURL: "http://localhost:3000/auth/google/callback",
       userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo",
     },
     async (accessToken, refreshToken, profile, cb) => {
       try {
-        const username = profile.username;
+        const username = profile.email;
         const googleId = profile.id;
         let result = await db.query(
           "SELECT * FROM users WHERE google_id = $1",
