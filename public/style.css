@@ -54,6 +54,7 @@ body {
   width: 100%;
   padding: 12px;
   margin-top: 10px;
+  margin-bottom: 16px;
   background-color: #0077cc;
   border: none;
   color: white;
@@ -246,4 +247,25 @@ h1 {
   right: 12px;
   font-size: 20px;
   cursor: pointer;
+}
+.google-btn {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  color: #444;
+  border: 1px solid #888;
+  border-radius: 4px;
+  font-size: 16px;
+  padding: 8px 16px;
+  text-decoration: none;
+  margin-bottom: 16px;
+  transition: background 0.2s;
+  width: auto;
+}
+.google-btn:hover {
+  background: #f7f7f7;
+}
+.google-logo {
+  height: 20px;
+  margin-right: 8px;
 }

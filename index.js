@@ -1,23 +1,32 @@
 import express from "express";
 import bodyParser from "body-parser";
-import dotenv from "dotenv";
-import fs from "fs";
 import pg from "pg";
 import bcrypt from "bcrypt";
-import cookieParser from "cookie-parser";
+import passport from "passport";
+import { Strategy } from "passport-local";
+import GoogleStrategy from "passport-google-oauth2";
+import session from "express-session";
+import env from "dotenv";
 
-dotenv.config({ path: ".env" });
+env.config({ path: ".env" });
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT;
+const saltRounds = 10;
+
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: true,
+  })
+);
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.set("view engine", "ejs");
 app.use(express.static("public"));
-
-app.use(cookieParser(process.env.SECRET));
-
-const saltRounds = 10;
+app.use(passport.initialize());
+app.use(passport.session());
 
 const db = new pg.Client({
   user: process.env.PG_USER,
@@ -25,174 +34,230 @@ const db = new pg.Client({
   database: process.env.PG_DATABASE,
   password: process.env.PG_PASSWORD,
   port: process.env.PG_PORT,
-  ssl: { rejectUnauthorized: false }, 
 });
 db.connect();
 
-function noCache(req, res, next) {
-  res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
-  res.set("Pragma", "no-cache");
-  res.set("Expires", "0");
-  next();
-}
-
-let notes = [];
-const notesFile = "./notes.json";
-
-if (fs.existsSync(notesFile)) {
-  const data = fs.readFileSync(notesFile, "utf-8");
-  try {
-    notes = JSON.parse(data).map((note) => {
-      const timestamp = note.timestamp || new Date();
-      return {
-        ...note,
-        createdAt: note.createdAt || timestamp,
-        updatedAt: note.updatedAt || timestamp,
-      };
-    });
-  } catch (err) {
-    notes = [];
-  }
-}
-
-function saveNotes() {
-  fs.writeFileSync(notesFile, JSON.stringify(notes, null, 2), "utf-8");
-}
-
-function isAuthenticated(req, res, next) {
-  if (req.signedCookies.username) return next();
-  res.redirect("/login");
-}
-
-app.get("/", isAuthenticated, noCache, (req, res) => {
-  if (!req.signedCookies.username) return res.redirect("/login");
-
-  const sortedNotes = [...notes].sort((a, b) => {
-    const dateA = new Date(a.updatedAt || a.createdAt);
-    const dateB = new Date(b.updatedAt || b.createdAt);
-    return dateB - dateA;
-  });
-
-  res.render("index", {
-    notes: sortedNotes,
-    user: { username: req.signedCookies.username },
-  });
+app.get("/", (req, res) => {
+  res.render("login");
 });
 
 app.get("/login", (req, res) => {
-  res.render("login", { error: null });
+  res.render("login");
 });
 
 app.get("/register", (req, res) => {
-  res.render("register", { error: null });
+  res.render("register");
 });
 
+app.get("/logout", (req, res) => {
+  req.logout(function (err) {
+    if (err) {
+      return next(err);
+    }
+    res.redirect("/");
+  });
+});
+
+app.get("/index", (req, res) => {
+  if (req.isAuthenticated()) {
+    db.query(
+      "SELECT * FROM notes WHERE username = $1 ORDER BY updated_at DESC",
+      [req.user.username]
+    ).then((result) => {
+      res.render("index", { notes: result.rows, user: req.user });
+    });
+  } else {
+    res.redirect("/login");
+  }
+});
+
+app.get(
+  "/auth/google",
+  passport.authenticate("google", {
+    scope: ["profile", "email"],
+  })
+);
+
+app.get(
+  "/auth/google/index",
+  passport.authenticate("google", {
+    successRedirect: "/index",
+    failureRedirect: "/login",
+  })
+);
+
+app.post(
+  "/login",
+  passport.authenticate("local", {
+    successRedirect: "/index",
+    failureRedirect: "/login",
+  })
+);
+
 app.post("/register", async (req, res) => {
-  const { username, password } = req.body;
+  const username = req.body.username;
+  const password = req.body.password;
 
   try {
-    const userExists = await db.query(
+    const checkResult = await db.query(
       "SELECT * FROM users WHERE username = $1",
       [username]
     );
 
-    if (userExists.rows.length > 0) {
-      return res.render("register", { error: "Username already exists" });
+    if (checkResult.rows.length > 0) {
+      req.redirect("/login");
+    } else {
+      bcrypt.hash(password, saltRounds, async (err, hash) => {
+        if (err) {
+          console.error("Error hashing password:", err);
+        } else {
+          const result = await db.query(
+            "INSERT INTO users (username, password) VALUES ($1, $2) RETURNING *",
+            [username, hash]
+          );
+          const user = result.rows[0];
+          req.login(user, (err) => {
+            console.log("success");
+            res.redirect("/login");
+          });
+        }
+      });
     }
-
-    const hash = await bcrypt.hash(password, saltRounds);
-    await db.query("INSERT INTO users (username, password) VALUES ($1, $2)", [
-      username,
-      hash,
-    ]);
-
-    res.redirect("/login");
   } catch (err) {
-    console.error("Registration error:", err);
-    res.render("register", { error: "Registration failed" });
+    console.log(err);
   }
 });
 
-app.post("/login", async (req, res) => {
-  const { username, password } = req.body;
+passport.use(
+  "local",
+  new Strategy(async function verify(username, password, cb) {
+    try {
+      const result = await db.query(
+        "SELECT * FROM users WHERE username = $1 ",
+        [username]
+      );
+      if (result.rows.length > 0) {
+        const user = result.rows[0];
+        const storedHashedPassword = user.password;
+        bcrypt.compare(password, storedHashedPassword, (err, valid) => {
+          if (err) {
+            console.error("Error comparing passwords:", err);
+            return cb(err);
+          } else {
+            if (valid) {
+              return cb(null, user);
+            } else {
+              return cb(null, false);
+            }
+          }
+        });
+      } else {
+        return cb("User not found");
+      }
+    } catch (err) {
+      console.log(err);
+    }
+  })
+);
 
+passport.use(
+  new GoogleStrategy(
+    {
+      clientID: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      callbackURL: "http://localhost:3000/auth/google/index",
+      userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo",
+    },
+    async (accessToken, refreshToken, profile, cb) => {
+      try {
+        const email = profile.email;
+        const googleId = profile.id;
+        let result = await db.query(
+          "SELECT * FROM users WHERE google_id = $1",
+          [googleId]
+        );
+        if (result.rows.length === 0) {
+          await db.query(
+            "INSERT INTO users (username, password, google_id) VALUES ($1, $2, $3)",
+            [email, "google", googleId]
+          );
+          result = await db.query("SELECT * FROM users WHERE google_id = $1", [
+            googleId,
+          ]);
+        }
+        return cb(null, result.rows[0]);
+      } catch (err) {
+        return cb(err);
+      }
+    }
+  )
+);
+
+passport.serializeUser((user, cb) => {
+  cb(null, user.username);
+});
+
+passport.deserializeUser(async (username, cb) => {
   try {
     const result = await db.query("SELECT * FROM users WHERE username = $1", [
       username,
     ]);
-
-    if (result.rows.length === 0) {
-      return res.render("login", { error: "User not found" });
-    }
-
-    const user = result.rows[0];
-    const isMatch = await bcrypt.compare(password, user.password);
-
-    if (isMatch) {
-      res.cookie("username", user.username, {
-        signed: true,
-        httpOnly: true,
-        maxAge: 24 * 60 * 60 * 1000,
-        secure: process.env.NODE_ENV === "production",
-      });
-      res.redirect("/");
-    } else {
-      res.render("login", { error: "Incorrect password" });
-    }
+    cb(null, result.rows[0]);
   } catch (err) {
-    console.error("Login error:", err);
-    res.render("login", { error: "Login failed" });
+    cb(err);
   }
 });
 
-app.get("/logout", (req, res) => {
-  res.clearCookie("username", { signed: true });
-  res.redirect("/login");
-});
-
-// Post a note
-app.post("/post", isAuthenticated, (req, res) => {
-  const content = req.body.post;
-  if (content && content.trim() !== "") {
-    const newPost = {
-      id: notes.length + 1,
-      name: req.signedCookies.username,
-      content: content,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    notes.push(newPost);
-    saveNotes();
+app.post("/post", ensureAuthenticated, async (req, res) => {
+  const content = req.body.post?.trim();
+  if (content) {
+    try {
+      await db.query("INSERT INTO notes (username, content) VALUES($1, $2)", [
+        req.user.username,
+        content,
+      ]);
+    } catch (err) {
+      console.error("Error Posting Note:", err);
+    }
   }
-  res.redirect("/");
+  res.redirect("/index");
 });
 
-// Delete a note
-app.post("/delete/:id/", isAuthenticated, (req, res) => {
-  const id = parseInt(req.params.id);
-  const searchIdx = notes.findIndex((note) => note.id === id);
-
-  if (searchIdx > -1) {
-    notes.splice(searchIdx, 1);
-    saveNotes();
-  }
-  res.redirect("/");
-});
-
-// Edit a note
-app.post("/edit/:id/", isAuthenticated, (req, res) => {
-  const id = parseInt(req.params.id);
+app.post("/edit/:id/", ensureAuthenticated, async (req, res) => {
+  const id = Number(req.params.id);
   const updatedContent = req.body.content;
 
-  const note = notes.find((note) => note.id === id);
-  if (note && updatedContent.trim() !== "") {
-    note.content = updatedContent;
-    note.updatedAt = new Date();
-    saveNotes();
+  try {
+    await db.query(
+      "UPDATE notes SET content = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND username = $3",
+      [updatedContent, id, req.user.username]
+    );
+  } catch (err) {
+    console.error("Error Updating Note:", err);
   }
-  res.redirect("/");
+  res.redirect("/index");
 });
 
+app.post("/delete/:id/", ensureAuthenticated, async (req, res) => {
+  const id = Number(req.params.id);
+  try {
+    await db.query("DELETE FROM notes WHERE id = $1 AND username = $2", [
+      id,
+      req.user.username,
+    ]);
+  } catch (err) {
+    console.error("Error Deleting Post", err);
+  }
+  res.redirect("/index");
+});
+
+function ensureAuthenticated(req, res, next) {
+  if (req.isAuthenticated && req.isAuthenticated()) {
+    return next();
+  }
+  res.redirect("/login");
+}
+
 app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
+  console.log(`Server running at port http://localhost:${port}`);
 });

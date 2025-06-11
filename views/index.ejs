@@ -1,85 +1,99 @@
 <%- include('partials/header') %>
 
-  <body>
-    <div class="container">
-      <h1>Notes</h1>
-      <form action="/post" class="post-area" method="POST">
-        <input type="text" name="post" id="post" placeholder="Type something..." required />
-        <input type="submit" value="Post" class="btn btn-post" />
+  <div class="container">
+    <h1>Notes</h1>
+    <form action="/post" class="post-area" method="POST">
+      <input
+        type="text"
+        name="post"
+        id="post"
+        placeholder="Type something..."
+        required
+      />
+      <input type="submit" value="Post" class="btn btn-post" />
+    </form>
+
+    <div class="post-list">
+      <ul>
+        <% notes.forEach((note)=> { %>
+        <li>
+          <div class="post-header">
+            <div class="author-info">
+              <img src="/assets/avatar.jpg" alt="Avatar" class="avatar" />
+              <strong class="name"> <%= note.username %> </strong>
+              <div class="date">
+                <span>
+                  Created:
+                  <%= new Date(note.created_at).toLocaleString("en-US", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit"
+                  }) %>
+                </span>
+                <% if (new Date(note.updated_at).getTime() !== new
+                Date(note.created_at).getTime()) { %>
+                <span class="edited-tag">(Edited:
+                  <%= new Date(note.updated_at).toLocaleString("en-US", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit"
+                  }) %>
+                )</span>
+                <% } %>
+              </div>
+            </div>
+            <div class="post-actions">
+              <form
+                action="/delete/<%= note.id %>"
+                method="POST"
+                style="display: inline"
+              >
+                <button type="submit" class="btn btn-delete">Delete</button>
+              </form>
+              <button
+                type="button"
+                class="btn btn-edit"
+                onclick="openEditModal(<%= note.id %>, `<%- JSON.stringify(note.content).slice(1, -1) %>`)"
+              >
+                Edit
+              </button>
+            </div>
+          </div>
+
+          <div class="post-content">
+            <p><%= note.content %></p>
+          </div>
+        </li>
+        <% }); %>
+      </ul>
+    </div>
+    <a
+      class="btn-logout"
+      style="display: inline; float: right"
+      href="/logout"
+      role="button"
+      >Log Out</a
+    >
+  </div>
+  <div id="editModal" class="modal">
+    <div class="modal-content">
+      <span class="close-btn">&times;</span>
+      <h2>Edit Note</h2>
+      <form id="editForm" method="POST">
+        <input
+          type="text"
+          name="content"
+          class="editContent"
+          id="editContent"
+          required
+        />
+        <input type="submit" value="Update" class="btn btn-post" />
       </form>
-
-      <div class="post-list">
-        <ul>
-          <% notes.forEach((note)=> { %>
-            <li>
-              <div class="post-header">
-                <div class="author-info">
-                  <img src="/assets/avatar.jpg" alt="Avatar" class="avatar" />
-                  <strong class="name">
-                    <%= note.name %>
-                  </strong>
-                  <div class="date">
-                    <%= new Date(note.createdAt).toLocaleString('en-US', { dateStyle: 'medium' , timeStyle: 'short' })
-                      %>
-                      <% if (new Date(note.updatedAt).getTime() !==new Date(note.createdAt).getTime()) { %>
-                        <span class="edited-tag">(Edited)</span>
-                        <% } %>
-                  </div>
-                </div>
-                <div class="post-actions">
-                  <form action="/delete/<%= note.id %>" method="POST" style="display: inline">
-                    <button type="submit" class="btn btn-delete">Delete</button>
-                  </form>
-                  <button type="button" class="btn btn-edit"
-                    onclick="openEditModal(<%= note.id %>, `<%- JSON.stringify(note.content).slice(1, -1) %>`)">
-                    Edit
-                  </button>
-                </div>
-              </div>
-
-              <div class="post-content">
-                <p>
-                  <%= note.content %>
-                </p>
-              </div>
-            </li>
-            <% }); %>
-        </ul>
-      </div>
-      <a class="btn-logout" style="display: inline; float: right;" href="/logout" role="button">Log Out</a>
     </div>
-    <div id="editModal" class="modal">
-      <div class="modal-content">
-        <span class="close-btn">&times;</span>
-        <h2>Edit Note</h2>
-        <form id="editForm" method="POST">
-          <input type="text" name="content" class="editContent" id="editContent" required />
-          <input type="submit" value="Update" class="btn btn-post" />
-        </form>
-      </div>
-    </div>
-    <script>
-      const modal = document.getElementById("editModal");
-      const closeBtn = document.querySelector(".close-btn");
-      const editForm = document.getElementById("editForm");
-      const editContent = document.getElementById("editContent");
+  </div>
 
-      function openEditModal(id, content) {
-        editForm.action = `/edit/${id}`;
-        editContent.value = content;
-        modal.style.display = "block";
-      }
-
-      closeBtn.onclick = () => {
-        modal.style.display = "none";
-      };
-
-      window.onclick = (event) => {
-        if (event.target === modal) {
-          modal.style.display = "none";
-        }
-      };
-    </script>
-  </body>
-
-  <%- include('partials/footer') %>
+<%- include('partials/footer') %>

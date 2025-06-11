@@ -1,1 +1,23 @@
+<script>
+    const modal = document.getElementById("editModal");
+    const closeBtn = document.querySelector(".close-btn");
+    const editForm = document.getElementById("editForm");
+    const editContent = document.getElementById("editContent");
+
+    function openEditModal(id, content) {
+      editForm.action = `/edit/${id}`;
+      editContent.value = content;
+      modal.style.display = "block";
+    }
+
+    closeBtn.onclick = () => {
+      modal.style.display = "none";
+    };
+
+    window.onclick = (event) => {
+      if (event.target === modal) {
+        modal.style.display = "none";
+      }
+    };
+  </script></body>
 </html>
