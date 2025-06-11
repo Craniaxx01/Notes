@@ -5,6 +5,14 @@ body {
   padding: 0;
 }
 
+.title-icon {
+  width: 40px;
+  height: 40px;
+  vertical-align: middle;
+  margin-left: 10px;
+  margin-bottom: 8px;
+}
+
 .btn-logout {
   background-color: #f44336;
   color: white;
