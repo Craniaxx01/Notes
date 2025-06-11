@@ -208,60 +208,48 @@ passport.deserializeUser(async (username, cb) => {
   }
 });
 
-app.post(
-  "/post",
-  ensureAuthenticated,
-  async (req, res) => {
-    const content = req.body.post?.trim();
-    if (content) {
-      try {
-        await db.query("INSERT INTO notes (username, content) VALUES($1, $2)", [
-          req.user.username,
-          content,
-        ]);
-      } catch (err) {
-        console.error("Error Posting Note:", err);
-      }
-    }
-    res.redirect("/index");
-  }
-);
-
-app.post(
-  "/edit/:id/",
-  ensureAuthenticated,
-  async (req, res) => {
-    const id = Number(req.params.id);
-    const updatedContent = req.body.content;
-
+app.post("/post", ensureAuthenticated, async (req, res) => {
+  const content = req.body.post?.trim();
+  if (content) {
     try {
-      await db.query(
-        "UPDATE notes SET content = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND username = $3",
-        [updatedContent, id, req.user.username]
-      );
-    } catch (err) {
-      console.error("Error Updating Note:", err);
-    }
-    res.redirect("/index");
-  }
-);
-
-app.post(
-  "/delete/:id/",
-  ensureAuthenticated,
-  async (req, res) => {
-    const id = Number(req.params.id);
-    try {
-      await db.query("DELETE FROM notes WHERE id = $1 AND username = $2", [
-        id,
+      await db.query("INSERT INTO notes (username, content) VALUES($1, $2)", [
         req.user.username,
+        content,
       ]);
     } catch (err) {
-      console.error("Error Deleting Post", err);
+      console.error("Error Posting Note:", err);
     }
-    res.redirect("/index");
   }
-);
+  res.redirect("/index");
+});
+
+app.post("/edit/:id/", ensureAuthenticated, async (req, res) => {
+  const id = Number(req.params.id);
+  const updatedContent = req.body.content;
+
+  try {
+    await db.query(
+      "UPDATE notes SET content = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND username = $3",
+      [updatedContent, id, req.user.username]
+    );
+  } catch (err) {
+    console.error("Error Updating Note:", err);
+  }
+  res.redirect("/index");
+});
+
+app.post("/delete/:id/", ensureAuthenticated, async (req, res) => {
+  const id = Number(req.params.id);
+  try {
+    await db.query("DELETE FROM notes WHERE id = $1 AND username = $2", [
+      id,
+      req.user.username,
+    ]);
+  } catch (err) {
+    console.error("Error Deleting Post", err);
+  }
+  res.redirect("/index");
+});
 
 function ensureAuthenticated(req, res, next) {
   if (req.isAuthenticated && req.isAuthenticated()) {
