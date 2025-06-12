@@ -1,104 +1,73 @@
 <%- include('partials/header') %>
 
-<div class="container">
-  <h1>
-    Notes
-    <img src="/assets/favicon.png" class="title-icon" />
-  </h1>
-  <form action="/post" class="post-area" method="POST">
-    <input
-      type="text"
-      name="post"
-      id="post"
-      placeholder="Type something..."
-      required
-    />
-    <input type="submit" value="Post" class="btn btn-post" />
-  </form>
-
-  <div class="post-list">
-    <ul>
-      <% notes.forEach((note)=> { %>
-      <li>
-        <div class="post-header">
-          <div class="author-info">
-            <img 
-              src="<%= note.username === user.username ? (user.profile_picture || '/assets/blank_avatar.png') : '/assets/blank_avatar.png' %>" 
-              alt="Avatar" 
-              class="avatar" 
-            />
-            <strong class="name"><%= note.username %></strong>
-            <div class="date">
-              <span>
-                Created: <%= new Date(note.created_at).toLocaleString("en-US", {
-                  year: "numeric",
-                  month: "short",
-                  day: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit"
-                }) %>
-              </span>
-              <% if (new Date(note.updated_at).getTime() !== new Date(note.created_at).getTime()) { %>
-                <span class="edited-tag">
-                  (Edited: <%= new Date(note.updated_at).toLocaleString("en-US", {
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit"
-                  }) %>)
-                </span>
-              <% } %>
-            </div>
-          </div>
-          <div class="post-actions">
-            <form
-              action="/delete/<%= note.id %>/"
-              method="POST"
-              style="display: inline"
-            >
-              <button type="submit" class="btn btn-delete">Delete</button>
-            </form>
-            <button
-              type="button"
-              class="btn btn-edit"
-              onclick="openEditModal('<%= note.id %>', '<%= note.content.replace(/'/g, "\\'") %>')"
-            >
-              Edit
-            </button>
-          </div>
-        </div>
-
-        <div class="post-content">
-          <p><%= note.content %></p>
-        </div>
-      </li>
-      <% }); %>
-    </ul>
-  </div>
-  <a
-    class="btn-logout"
-    style="display: inline; float: right"
-    href="/logout"
-    role="button"
-    >Log Out</a
-  >
-</div>
-<div id="editModal" class="modal">
-  <div class="modal-content">
-    <span class="close-btn">&times;</span>
-    <h2>Edit Note</h2>
-    <form id="editForm" method="POST">
-      <input
-        type="text"
-        name="content"
-        class="editContent"
-        id="editContent"
-        required
-      />
-      <button type="submit" class="btn btn-post">Update</button>
+  <div class="container">
+    <h1>
+      Notes
+      <img src="/assets/favicon.png" class="title-icon" />
+    </h1>
+    <form action="/post" class="post-area" method="POST">
+      <input type="text" name="post" id="post" placeholder="Type something..." required />
+      <input type="submit" value="Post" class="btn btn-post" />
     </form>
-  </div>
-</div>
 
-<%- include('partials/footer') %>
+    <div class="post-list">
+      <ul>
+        <% notes.forEach((note)=> { %>
+          <li>
+            <div class="post-header">
+              <div class="author-info">
+                <img
+                  src="<%= note.username === user.username ? (user.profile_picture || '/assets/blank_avatar.png') : '/assets/blank_avatar.png' %>"
+                  alt="Avatar" class="avatar" />
+                <strong class="name">
+                  <%= note.username %>
+                </strong>
+                <div class="date">
+                  <span>
+                    Created: <%= new Date(note.created_at).toLocaleString("en-US", { timeZone: "Asia/Manila" ,
+                      year: "numeric" , month: "short" , day: "numeric" , hour: "2-digit" , minute: "2-digit" }) %>
+                  </span>
+                  <% if (new Date(note.updated_at).getTime() !==new Date(note.created_at).getTime()) { %>
+                    <span class="edited-tag">
+                      (Edited: <%= new Date(note.updated_at).toLocaleString("en-US", { timeZone: "Asia/Manila" ,
+                        year: "numeric" , month: "short" , day: "numeric" , hour: "2-digit" , minute: "2-digit" }) %>)
+                    </span>
+                    <% } %>
+                </div>
+
+              </div>
+              <div class="post-actions">
+                <form action="/delete/<%= note.id %>/" method="POST" style="display: inline">
+                  <button type="submit" class="btn btn-delete">Delete</button>
+                </form>
+                <button type="button" class="btn btn-edit"
+                  onclick="openEditModal('<%= note.id %>', '<%= note.content.replace(/'/g, " \\'") %>')"
+                  >
+                  Edit
+                </button>
+              </div>
+            </div>
+
+            <div class="post-content">
+              <p>
+                <%= note.content %>
+              </p>
+            </div>
+          </li>
+          <% }); %>
+      </ul>
+    </div>
+    <a class="btn-logout" style="display: inline; float: right" href="/logout" role="button">Log Out</a>
+  </div>
+  <div id="editModal" class="modal">
+    <div class="modal-content">
+      <span class="close-btn">&times;</span>
+      <h2>Edit Note</h2>
+      <form id="editForm" method="POST">
+        <input type="text" name="content" class="editContent" id="editContent" required />
+        <button type="submit" class="btn btn-post">Update</button>
+      </form>
+    </div>
+  </div>
+
+  <%- include('partials/footer') %>
